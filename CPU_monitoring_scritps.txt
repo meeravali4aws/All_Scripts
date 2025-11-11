@@ -1,0 +1,211 @@
+
+#!/bin/bash
+cpucnt=`grep -c ^processor /proc/cpuinfo`
+cpuuse=$(cat /proc/loadavg | awk '{print $3}'|cut -f 1 -d ".")
+NOW=$(date +"%Y-%b-%d")
+LOG="/bisorbit/dev/scripts/web1/cpustat_$NOW.out"
+DATE="$(date +'%Y-%m-%d-%T')"
+top -b -n 1 > /bisorbit/dev/script/web1/top-output.txt
+echo "########### $DATE ###########" >> $LOG
+#echo " " >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo "+*******************************************************************+" >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo " " >> $LOG
+echo "Output of the top command " >> $LOG
+echo "+----------------------------------------------------------------+" >> $LOG
+head -n 30 /bisorbit/dev/scripts/web1/top-output.txt >> $LOG
+echo " " >> $LOG
+echo " Only bisorbit user process " >> $LOG
+echo "============================" >> $LOG
+grep -i bisorbit /bisorbit/dev/scripts/web1/top-output.txt >> $LOG
+echo " " >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo "  " >> $LOG
+echo "No of CPUs on server: $cpucnt" >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo " ">> $LOG
+echo "CPU current usage is: $cpuuse%" >> $LOG
+echo "" >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo " ">> $LOG
+echo " ">> $LOG
+echo "Top Processes which consuming high CPU using the ps command" >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+echo " ">> $LOG
+echo "$(ps -eo pcpu,pid,user,args | sort -k 1 -r |grep -i bisorbit| head -10)" >> $LOG
+echo " ">> $LOG
+echo " Memory details " >> $LOG
+echo "+------------------------------------------------------------------+" >> $LOG
+free -g >> $LOG
+echo " " >> $LOG
+echo  "################   END   ################## " >> $LOG
+echo " " >> $LOG
+
+
+##############################################
+
+1) Startup and shut down
+single node
+multiple node(ssh)
+cluster (ssh)
+2) java errors in catalina.out (capture and triggere email)
+3) Orbit we log and sch log any errors with message as ERROR then trigger email
+4) CPU ustilization,memory total,used and top 10 utilization
+
+5) OS level logs
+
+cat /tmp/loadavg 
+0.09 0.06 0.03 1/427 3570840
+10.09 0.06 10.03 1/427 3570840
+#cpuuse=$(cat /tmp/loadavg | awk '{print $3}'|cut -f 1 -d ".")
+
+################################
+
+vi /opt/scripts/cpu-alert.sh
+
+#!/bin/bash
+cpucnt=`grep -c ^processor /proc/cpuinfo`
+#cpuuse=$(cat /proc/loadavg | awk '{print $3}'|cut -f 1 -d ".")
+cpuuse=$(cat /proc/loadavg | awk '{print $3}')
+if [ "$cpuuse" -ge 90 ]; then
+SUBJECT="ATTENTION: CPU load is high on $(hostname) at $(date)"
+MESSAGE="/tmp/Mail.out"
+#TO="example@gmail.com"
+  echo "No of CPUs on server: $cpucnt" >> $MESSAGE
+  echo "+------------------------------------------------------------------+" >> $MESSAGE
+  echo "CPU current usage is: $cpuuse%" >> $MESSAGE
+  echo "" >> $MESSAGE
+  echo "+------------------------------------------------------------------+" >> $MESSAGE
+  echo "Top 10 processes which consuming high CPU" >> $MESSAGE
+  echo "+------------------------------------------------------------------+" >> $MESSAGE
+  echo "$(top -bn1 | head -10)" >> $MESSAGE
+  echo "" >> $MESSAGE
+  echo "+------------------------------------------------------------------+" >> $MESSAGE
+  echo "Top 10 Processes which consuming high CPU using the ps command" >> $MESSAGE
+  echo "+------------------------------------------------------------------+" >> $MESSAGE
+  echo "$(ps -eo pcpu,pid,user,args | sort -k 1 -r | head -10)" >> $MESSAGE
+ mail -s "$SUBJECT" "$TO" < $MESSAGE
+ rm /tmp/Mail.out
+else
+echo "Server CPU usage is in under threshold"
+  fi
+  
+##############################################
+  #!/bin/bash
+echo `date`
+#cpu use threshold
+cpu_threshold='90'
+ #mem idle threshold
+mem_threshold='500'
+ #disk use threshold
+disk_threshold='90'
+#---cpu
+cpu_usage () {
+cpu_idle=`top -b -n 1 | grep Cpu | awk '{print $8}'|cut -f 1 -d "."`
+cpu_use=`expr 100 - $cpu_idle`
+ echo "cpu utilization: $cpu_use"
+if [ $cpu_use -gt $cpu_threshold ]
+    then
+        echo "cpu warning!!!"
+    else
+        echo "cpu ok!!!"
+fi
+}
+#---mem
+mem_usage () {
+ #MB units
+mem_free=`free -m | grep "Mem" | awk '{print $4+$6}'`
+ echo "memory space remaining : $mem_free MB"
+if [ $mem_free -lt $mem_threshold  ]
+    then
+        echo "mem warning!!!"
+    else
+        echo "mem ok!!!"
+fi
+}
+#---disk
+disk_usage () {
+disk_use=`df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%"`
+ echo "disk usage : $disk_use" 
+if [ $disk_use -gt $disk_threshold ]
+    then
+        echo "disk warning!!!"
+    else
+        echo "disk ok!!!"
+fi
+ 
+ 
+}
+cpu_usage
+mem_usage
+disk_usage
+###########################################
+mount_threshold='90'
+mount_usage () {
+#disk_use=`df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%"`
+df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%" > mount_use_pct.txt
+df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5 echo "    " $6}' > mount_use.txt
+#echo $disk_use > diskused.txt
+for i in  `cat mount_use_pct.txt`
+do
+#disk_use=`$i | awk '{print $1}' | cut -f 1 -d "%"`
+#disk_use=`echo $i | sed 's/[%]//g'`
+echo "disk usage : $mount_use" 
+if [ $mount_use -ge $mount_threshold ]
+    then
+        echo "disk warning!!!"
+		echo "***************"
+		echo "Pctused Mountpoint  "
+		echo " $i "
+    else
+        echo "disk ok!!!"
+fi
+done
+}
+
+disk_use=df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5 echo " " $6}'
+echo $disk_use > diskused.txt
+
+disk_use=`df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%"'
+paste -d ' ' - - < $disk_use > diskused.txt 
+
+
+sed 's/Status/\n&/g' file
+
+
+usage	
+disk_use=`echo $i | sed 's/[%]//g'`
+############# Disc usage ##############
+[tomcat@orbimp03 meeravali]$ cat disk_useg.sh
+disk_threshold=30
+disk_usage () {
+#disk_use=`df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%"`
+df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5}' | cut -f 1 -d "%" > disk_use_pct.txt
+df -P | grep /dev | grep -v -E '(tmp|boot)' | awk '{print $5 echo "    " $6}' > disk_use.txt
+#echo $disk_use > diskused.txt
+for i in  `cat disk_use_pct.txt`
+do
+#echo $i
+#disk_use=`$i | awk '{print $1}' | cut -f 1 -d "%"`
+#disk_use=`echo $i | sed 's/[%]//g'`
+if [ $i -ge $disk_threshold ]
+    then
+        echo "disk usage : $i"
+        echo "disk warning!!!"
+        echo "***************"
+        echo "Pctused Mountpoint  "
+        grep -i $i disk_use.txt
+        echo "######################"
+    else
+        echo "disk ok!!!"
+        echo "Pctused Mountpoint  "
+        grep -i $i disk_use.txt
+        echo "######################"
+fi
+done
+}
+disk_usage > disk_usage.out
+
+
+####################################

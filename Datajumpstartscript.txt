@@ -1,0 +1,31 @@
+#!/bin/bash
+#set -x
+DATE=date +"%m%d%y_%H%M"
+HOSTNAME=hostname
+SUBJECT="ALERT: Errors in datajump starting hostname $HOSTNAME logfile "
+TO="meeravali.shaik@orbitanalytics.com deepak.ubula@orbitanalytics.com"
+MAILLOG=/tmp/docker_status.out
+
+# Navigate to the directory containing the docker-compose.yml file
+cd /u01/datajump
+
+# Check if the containers are running
+containers_running=$(docker ps -q)
+
+# If no containers are running, start the containers
+if [ -z "$containers_running" ]; then
+    echo "Containers are not running. Starting the containers..."
+    docker compose up -d
+        sleep 2m
+        # Show the status of the containers
+  docker ps  > /tmp/docker_status.out
+  docker image >> /tmp/docker_status.out
+  MAILLOG=$(cat /tmp/docker_status.out)
+if [ $? = 0 ]
+then
+#        mail -a $MAILLOG -s "${SUBJECT} logfile is ${SUBJECT1}" ${TO} < $HOME/mbody.txt
+                echo -e "$MAILLOG" | mail -s "$SUBJECT" "${TO}"
+fi
+else
+    echo "Containers are already running."
+fi

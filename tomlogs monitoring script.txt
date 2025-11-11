@@ -1,0 +1,176 @@
+grep -e 'string1|string2' file
+LOG_FILE=/tmp/catalina.out
+DIFF=50
+FIND_STRING="java.lang.OutOfMemoryError:"
+tail -$DIFF $LOG_FILE | grep "$FIND_STRING"
+tail -$DIFF $LOG_FILE | grep "$FIND_STRING"|grep -e 'ERROR|CRITICAL'
+tail -$DIFF $LOG_FILE | grep -E 'OutOfMemory|ERROR|CRITICAL'
+tail -$DIFF $LOG_FILE | grep -E "$FIND_STRING"
+FIND_STRING='OutOfMemory|ERROR|CRITICAL'
+
+java.lang.OutOfMemoryError
+ERROR : Broken pipe 
+CRITICAL : Connection failed to database
+
+awk '$1 " " $2 >= "05-Dec-2022 12:50:31"' log.reformatted
+
+date '+%d-%h-%Y %H:%M'
+
+fma=`date --date='02 minutes ago' +"%d-%h-%Y %H:%M"`
+cat $i|grep -i "$fma"  > /tmp/catalina.log
+
+fma=`date --date='15 minutes ago' +"%Y%m%d%H%M%S"`
+fma=`date --date='15 minutes ago' +"%d-%h-%Y %H:%M"`
+
+fma=`date --date='60 minutes ago' +"%d-%h-%Y %H:%M"`
+cat /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out|grep -i $fma > /tmp/catalina.log
+
+fma=`date --date='02 minutes ago' +"%d-%h-%Y %H:%M"`
+
+line_num=`tac /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out | awk -v five_min_ago=$fma\
+      '(NF > 1 &&  $2 < five_min_ago ){print NR; exit 1}'`
+tail -$line_num /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out
+
+TIME=$(date --date "-10min" [format])
+sed -n "/^$TIME/,$ p"  /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out
+cp -pr /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out_org
+fma=`date --date='15 minutes ago' +"%Y%m%d%H%M%S"` line_num=`tac /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out | awk -v five_min_ago=$fma '(NF > 1 &&  $2 < five_min_ago ){print NR; exit 1}'`
+tail -$line_num /u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out
+
+cat $i|sed -n "/$fma/,/$fmn/p" > /tmp/catalina.log
+
+sh /home/tomcat/Orbitlog_monitor_v1.sh > /tmp/Orbitlog_monitor_vi.log &1
+
+###########  Testing ##########
+05-Dec-2022 13:50:31.170 INFO [main] OutOfMemoryError.java.lang.
+05-Dec-2022 13:50:31.170 INFO [main]
+05-Dec-2022 13:50:31.170 INFO [main]
+05-Dec-2022 13:50:33.170 INFO [main]
+05-Dec-2022 13:50:35.170 INFO [main] Broken pipe ERROR : 
+05-Dec-2022 13:50:31.170 INFO [main]
+05-Dec-2022 13:50:31.170 INFO [main]
+05-Dec-2022 13:50:39.170 INFO [main] Connection failed to database CRITICAL
+###########################
+
+###########  Testing ##########
+01-Dec-2022 06:20:31.170 INFO [main] OutOfMemoryError
+01-Dec-2022 06:21:31.170 INFO [main]
+01-Dec-2022 06:22:31.170 INFO [main]
+01-Dec-2022 06:21:33.170 INFO [main]
+01-Dec-2022 06:23:35.170 INFO [main] Broken ERROR pipe  : 
+01-Dec-2022 06:24:31.170 INFO [main]
+01-Dec-2022 06:25:31.170 INFO [main]
+01-Dec-2022 06:26:39.170 INFO [main] Connection failed CRITICAL to database 
+###########################
+
+Security framework of XStream not initialized, XStream is probably vulnerable.
+
+
+[tomcat@orbimp01 ~]$ cat Orbitlog_monitor.sh
+#############################
+#!/bin/bash
+################################################################################
+# ScriptName  : Orbitlog_monitor.sh
+# Version     : 1.00
+# Description : LogFile Monitoring Script.This script can be used to monitor the orbit logs
+# for a specific string [Example : ERROR] and will send you an email if it finds
+# the string [ERROR] in the Log File.
+################################################################################
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# VARIABLES
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+################################################################################
+# SOURCE_DIR/Logic Variables
+################################################################################
+##VARIABLE
+## TIME
+DATE=`date +"%m%d%y_%H%M"`
+HOSTNAME=`hostname`
+SUBJECT="ALERT: Errors in Orbitlogs hostname $HOSTNAME logfile "
+TO="meeravali.shaik@orbitanalytics.com arun.velicheti@orbitanalytics.com"
+FIND_STRING='OutOfMemory|"Connection is not available, request timed out after 30000ms"'
+
+for i in `cat $HOME/logfiles.txt`
+do
+LOG_FILE=$i
+#sum=`expr $sum + 1`
+name=`grep -o '[^/]*$' <<< "$i"`
+TMP_FILE=/tmp/old$name
+MAILLOG=/tmp/$name
+Todays=$(date +%m-%d-%y)
+Time=$(date +%T)
+TIME=`echo -e "Date -- $Todays || Time -- $Time"`
+echo "***************************************************************"
+echo "[INFO]: Last Time This Script Ran $Time"
+echo "***************************************************************"
+echo ""
+#SUBJECT="ALERT: Errors in "$i" hostname $HOSTNAME"
+PREVCOUNT=`cat $TMP_FILE | wc -l`
+TOTCOUNT=`cat $LOG_FILE | wc -l`
+DIFF=`expr $TOTCOUNT - $PREVCOUNT`
+echo "logfile is "$i" "
+#echo "tail -$DIFF $LOG_FILE "
+echo ""
+SUBJECT1="$i"
+tail -$DIFF $LOG_FILE | grep -E "$FIND_STRING"
+if [ $? = 0 ]
+then
+        tail -$DIFF $LOG_FILE > $MAILLOG
+      #  cat $MAILLOG | mail -s "${SUBJECT}" ${TO}
+        mail -a $MAILLOG -s "${SUBJECT}${SUBJECT1}" ${TO} < $HOME/mbody.txt
+        cat $LOG_FILE > $TMP_FILE
+        rm $MAILLOG
+#       exit 0;
+fi
+
+cat $LOG_FILE > $TMP_FILE
+done
+#######################
+[tomcat@orbimp01 ~]$
+
+
+cat /home/applmgr/scripts/oacore_logfiles.txt
+
+
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server1/logs/oacore_server1.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server1/logs/oacore_server1-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server1/logs/oacore_server1.out
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server2/logs/oacore_server2.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server2/logs/oacore_server2-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server2/logs/oacore_server2.out
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server3/logs/oacore_server3.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server3/logs/oacore_server3-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server3/logs/oacore_server3.out
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server4/logs/oacore_server4.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server4/logs/oacore_server4-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server4/logs/oacore_server4.out
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server5/logs/oacore_server5.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server5/logs/oacore_server5-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server5/logs/oacore_server5.out
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server6/logs/oacore_server6.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server6/logs/oacore_server6-diagnostic.log
+$FMW_HOME/user_projects/domains/EBS_domain/servers/oacore_server6/logs/oacore_server6.out
+
+cat $HOME/logfiles.txt
+/u01/orbhome/orcl_7070/logs/orbit_web.log
+/u01/orbhome/orcl_6060/logs/orbit_sch.log
+/u01/orbweb/apache-tomcat-9.0.44-7070/logs/catalina.out
+
+i=/u01/orbhome/orcl_7070/logs/orbit_sch.log
+grep -o '[^/]*$' <<< "$i"
+
+###########
+cat /home/applmgr/scripts/oacore_body.txt
+
+
+Hi Team,
+
+Errors in logfile.
+
+Please review the attached logfile. 
+
+Thanks.
+###########################
+
+
+
